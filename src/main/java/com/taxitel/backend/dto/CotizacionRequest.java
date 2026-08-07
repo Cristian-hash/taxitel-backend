@@ -3,13 +3,15 @@ package com.taxitel.backend.dto;
 import java.util.List;
 
 public class CotizacionRequest {
-
+    private String empresa;
     private List<String> paradas;
     private boolean tieneMensajeria;
     private int minutosEspera;
 
     public CotizacionRequest() {
     }
+    public String getEmpresa() { return empresa; }
+    public void setEmpresa(String empresa) { this.empresa = empresa; }
 
     public List<String> getParadas() {
         return paradas;
