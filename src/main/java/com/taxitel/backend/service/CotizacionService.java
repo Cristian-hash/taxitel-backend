@@ -26,13 +26,23 @@ public class CotizacionService {
         List<Tramo> tramosDesglosados = new ArrayList<>();
         double tarifaBaseConsolidada = 0.0;
 
-        // 1. CÁLCULO DE RUTAS
+        // 1. CÁLCULO DE RUTAS BIDIRECCIONAL (LA MEJORA VIP)
         for (int i = 0; i < paradas.size() - 1; i++) {
             String origenTramo = paradas.get(i);
             String destinoTramo = paradas.get(i + 1);
 
-            HistorialViaje viajeGuardado = historialRepository.findFirstByOrigenAndDestinoOrderByIdDesc(origenTramo, destinoTramo)
-                    .orElseThrow(() -> new RutaNoEncontradaException("Falta precio para: " + origenTramo + " a " + destinoTramo));
+            // Intentamos buscar la ruta de IDA (A -> B)
+            java.util.Optional<HistorialViaje> viajeOpt = historialRepository.findFirstByOrigenAndDestinoOrderByIdDesc(origenTramo, destinoTramo);
+
+            // Si no existe la Ida, intentamos buscar la ruta de VUELTA (B -> A)
+            if (viajeOpt.isEmpty()) {
+                viajeOpt = historialRepository.findFirstByOrigenAndDestinoOrderByIdDesc(destinoTramo, origenTramo);
+            }
+
+            // Si tampoco existe la vuelta, lanzamos el paracaídas para que Angular pida el precio manual
+            HistorialViaje viajeGuardado = viajeOpt.orElseThrow(() ->
+                    new RutaNoEncontradaException("Falta precio para: " + origenTramo + " a " + destinoTramo)
+            );
 
             double precioTramo = viajeGuardado.getTarifaBase();
 
@@ -48,21 +58,17 @@ public class CotizacionService {
         // 2. CÁLCULO DE MENSAJERÍA
         double recargoMensajeria = request.isTieneMensajeria() ? 2.00 : 0.00;
 
-        // 3. LA NUEVA MAGIA: CÁLCULO DE TOLERANCIA DE ESPERA
+        // 3. CÁLCULO DE TOLERANCIA DE ESPERA
         String nombreEmpresa = request.getEmpresa() != null ? request.getEmpresa().toUpperCase().trim() : "";
-        int tolerancia = 5; // Tolerancia general por defecto (5 minutos)
+        int tolerancia = 5; // Tolerancia general por defecto
 
-        // Reglas de negocio VIP
         if (nombreEmpresa.equals("KOMATSU MITSUI")) {
             tolerancia = 15;
         } else if (nombreEmpresa.equals("RICO POLLO")) {
             tolerancia = 7;
         }
 
-        // Restamos la tolerancia. (Si esperó 20 min y la tolerancia es 15, cobramos 5).
-        // Usamos Math.max para que si esperó menos de la tolerancia, no salgan números negativos, sino 0.
         int minutosCobrables = Math.max(0, request.getMinutosEspera() - tolerancia);
-
         double bloquesEspera = Math.ceil((double) minutosCobrables / 3);
         double recargoEspera = bloquesEspera * 1.00;
 
@@ -78,13 +84,14 @@ public class CotizacionService {
 
         return response;
     }
-
     public void guardarNuevoTramo(NuevoTramoRequest request) {
         HistorialViaje nuevo = new HistorialViaje();
-        nuevo.setEmpresa("GENERAL");
+        // CORRECCIÓN: Adiós al "GENERAL". Ahora extraemos el nombre real que viene de Angular
+        nuevo.setEmpresa(request.getEmpresa() != null ? request.getEmpresa().toUpperCase() : "GENERAL");
         nuevo.setOrigen(request.getOrigen());
         nuevo.setDestino(request.getDestino());
         nuevo.setTarifaBase(request.getTarifaBase());
+
         historialRepository.save(nuevo);
     }
 }
