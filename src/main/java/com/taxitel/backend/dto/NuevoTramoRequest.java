@@ -7,6 +7,7 @@ public class NuevoTramoRequest {
     private Double tarifaBase;
     public String getEmpresa() { return empresa; }
     public void setEmpresa(String empresa) { this.empresa = empresa; }
+
     public String getOrigen() { return origen; }
     public void setOrigen(String origen) { this.origen = origen; }
 

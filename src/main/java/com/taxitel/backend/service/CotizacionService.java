@@ -58,20 +58,11 @@ public class CotizacionService {
         // 2. CÁLCULO DE MENSAJERÍA
         double recargoMensajeria = request.isTieneMensajeria() ? 2.00 : 0.00;
 
-        // 3. CÁLCULO DE TOLERANCIA DE ESPERA
-        String nombreEmpresa = request.getEmpresa() != null ? request.getEmpresa().toUpperCase().trim() : "";
-        int tolerancia = 5; // Tolerancia general por defecto
-
-        if (nombreEmpresa.equals("KOMATSU MITSUI")) {
-            tolerancia = 15;
-        } else if (nombreEmpresa.equals("RICO POLLO")) {
-            tolerancia = 7;
-        }
-
-        int minutosCobrables = Math.max(0, request.getMinutosEspera() - tolerancia);
-        double bloquesEspera = Math.ceil((double) minutosCobrables / 3);
+        // 3. CÁLCULO DIRECTO DE ESPERA (Sin tolerancias ocultas)
+        // La cajera envía el tiempo exacto cobrable.
+        // Suma la matemática de espera: S/ 1.00 por cada 3 minutos.
+        double bloquesEspera = Math.ceil((double) request.getMinutosEspera() / 3);
         double recargoEspera = bloquesEspera * 1.00;
-
         // 4. CONSOLIDACIÓN FINAL
         double totalAPagar = tarifaBaseConsolidada + recargoMensajeria + recargoEspera;
 
