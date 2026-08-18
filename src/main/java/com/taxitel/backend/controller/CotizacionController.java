@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/cotizaciones")
 @CrossOrigin(origins = "*") // Permiso vital para que Angular pueda hablarle
@@ -42,4 +44,9 @@ public class CotizacionController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
+    // NUEVO ENDPOINT: http://localhost:8080/api/cotizaciones/rutas
+    @GetMapping("/rutas")
+    public ResponseEntity<List<String>> listarRutas() {
+        return ResponseEntity.ok(cotizacionService.obtenerRutasUnicas());
+    }
 }

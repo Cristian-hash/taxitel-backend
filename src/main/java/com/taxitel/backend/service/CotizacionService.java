@@ -85,4 +85,8 @@ public class CotizacionService {
 
         historialRepository.save(nuevo);
     }
+    // Extrae la lista limpia de direcciones para el autocompletado de Angular
+    public List<String> obtenerRutasUnicas() {
+        return historialRepository.findRutasUnicas();
+    }
 }
