@@ -26,22 +26,21 @@ public class CotizacionService {
         List<Tramo> tramosDesglosados = new ArrayList<>();
         double tarifaBaseConsolidada = 0.0;
 
-        // 1. CÁLCULO DE RUTAS BIDIRECCIONAL (LA MEJORA VIP)
+        // 1. CÁLCULO DE RUTAS BIDIRECCIONAL (TARIFA UNIVERSAL)
         for (int i = 0; i < paradas.size() - 1; i++) {
-            String origenTramo = paradas.get(i);
-            String destinoTramo = paradas.get(i + 1);
+            // 🌟 EL FILTRO DE TITANIO: Limpia espacios dobles y vacíos a los extremos antes de buscar
+            String origenTramo = paradas.get(i).trim().replaceAll("\\s+", " ");
+            String destinoTramo = paradas.get(i + 1).trim().replaceAll("\\s+", " ");
+            
+            // 🌟 BUSCAMOS LA RUTA (Solo nos importa Origen y Destino)
+            java.util.Optional<HistorialViaje> viajeOpt = historialRepository.encontrarRutaEspejo(
+                    origenTramo,
+                    destinoTramo
+            );
 
-            // Intentamos buscar la ruta de IDA (A -> B)
-            java.util.Optional<HistorialViaje> viajeOpt = historialRepository.findFirstByOrigenAndDestinoOrderByIdDesc(origenTramo, destinoTramo);
-
-            // Si no existe la Ida, intentamos buscar la ruta de VUELTA (B -> A)
-            if (viajeOpt.isEmpty()) {
-                viajeOpt = historialRepository.findFirstByOrigenAndDestinoOrderByIdDesc(destinoTramo, origenTramo);
-            }
-
-            // Si tampoco existe la vuelta, lanzamos el paracaídas para que Angular pida el precio manual
+            // Si nadie en la historia de la empresa ha hecho esta ruta, pedimos precio
             HistorialViaje viajeGuardado = viajeOpt.orElseThrow(() ->
-                    new RutaNoEncontradaException("Falta precio para: " + origenTramo + " a " + destinoTramo)
+                    new RutaNoEncontradaException("Falta precio global para: " + origenTramo + " a " + destinoTramo)
             );
 
             double precioTramo = viajeGuardado.getTarifaBase();
@@ -58,11 +57,10 @@ public class CotizacionService {
         // 2. CÁLCULO DE MENSAJERÍA
         double recargoMensajeria = request.isTieneMensajeria() ? 2.00 : 0.00;
 
-        // 3. CÁLCULO DIRECTO DE ESPERA (Sin tolerancias ocultas)
-        // La cajera envía el tiempo exacto cobrable.
-        // Suma la matemática de espera: S/ 1.00 por cada 3 minutos.
+        // 3. CÁLCULO DIRECTO DE ESPERA
         double bloquesEspera = Math.ceil((double) request.getMinutosEspera() / 3);
         double recargoEspera = bloquesEspera * 1.00;
+
         // 4. CONSOLIDACIÓN FINAL
         double totalAPagar = tarifaBaseConsolidada + recargoMensajeria + recargoEspera;
 
@@ -77,7 +75,6 @@ public class CotizacionService {
     }
     public void guardarNuevoTramo(NuevoTramoRequest request) {
         HistorialViaje nuevo = new HistorialViaje();
-        // CORRECCIÓN: Adiós al "GENERAL". Ahora extraemos el nombre real que viene de Angular
         nuevo.setEmpresa(request.getEmpresa() != null ? request.getEmpresa().toUpperCase() : "GENERAL");
         nuevo.setOrigen(request.getOrigen());
         nuevo.setDestino(request.getDestino());
@@ -85,7 +82,7 @@ public class CotizacionService {
 
         historialRepository.save(nuevo);
     }
-    // Extrae la lista limpia de direcciones para el autocompletado de Angular
+
     public List<String> obtenerRutasUnicas() {
         return historialRepository.findRutasUnicas();
     }
